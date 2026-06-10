@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Para mi bonita</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Montserrat:wght@300;400&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background-color: #1a1512; 
+            font-family: 'Playfair Display', serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 60px 20px;
+            overflow-y: auto; 
+            overflow-x: hidden;
+            perspective: 1000px;
+        }
+
+        /* LIENZO DE EFECTOS MÁGICOS COMPLETOS */
+        #particles-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        /* DESTELLO DE LUZ AMBIENTAL */
+        .ambient-glow {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(circle, rgba(197, 168, 128, 0.12) 0%, transparent 70%);
+            z-index: 2;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 2s ease-in-out;
+        }
+        .ambient-glow.active {
+            opacity: 1;
+        }
+
+        /* PANTALLA DE APERTURA (SOBRE INTERACTIVO) */
+        .intro-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #1a1512;
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1), visibility 1.2s;
+        }
+
+        .intro-screen.fade-out {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .envelope-wrapper {
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .envelope {
+            position: relative;
+            width: 300px;
+            height: 200px;
+            background: #2a1f17;
+            box-shadow: 0 30px 70px rgba(0,0,0,0.8);
+            border-radius: 4px;
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .envelope:hover {
+            transform: translateY(-10px) rotate(-1deg);
+        }
+
+        .envelope::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 100px 150px 0 150px;
+            border-color: #1c140e transparent transparent transparent;
+            transform-origin: top;
+            transition: transform 0.5s ease;
+            z-index: 3;
+        }
+
+        .envelope.open::before {
+            transform: rotateX(180deg);
+            z-index: 1;
+        }
+
+        .envelope::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 0 150px 110px 150px;
+            border-color: transparent #251b14 #251b14 #251b14;
+            z-index: 2;
+        }
+
+        .envelope-seal {
+            position: absolute;
+            top: 85px;
+            left: 135px;
+            width: 34px;
+            height: 34px;
+            background: linear-gradient(135deg, #e5c090 0%, #c5a880 50%, #9e8259 100%);
+            border-radius: 50%;
+            z-index: 4;
+            transition: transform 0.4s, opacity 0.3s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5), inset 0 0 5px rgba(0,0,0,0.2);
+        }
+
+        .envelope.open .envelope-seal {
+            transform: scale(0);
+            opacity: 0;
+        }
+
+        .envelope-text {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.7rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: #c5a880;
+            opacity: 0.6;
+        }
+
+        /* ESTRUCTURA ESCÉNICA CON ELEMENTOS LATERALES */
+        .stage-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 50px;
+            max-width: 1200px;
+            width: 100%;
+            z-index: 3;
+            position: relative;
+        }
+
+        /* CONTENIDO DE LA CARTA */
+        .main-content {
+            opacity: 0;
+            transform: translateY(40px) scale(0.98);
+            transition: opacity 1.5s cubic-bezier(0.25, 1, 0.5, 1), transform 1.5s cubic-bezier(0.25, 1, 0.5, 1);
+            width: 100%;
+            max-width: 530px;
+            flex-shrink: 0;
+        }
+
+        .main-content.visible {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
+        /* CONTENEDOR MAESTRO */
+        .poster-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1 / 1.41; 
+            background-image: url('fondoi.jpg');
+            background-size: cover; 
+            background-position: center;
+            background-repeat: no-repeat;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 15px;
+            border-radius: 2px;
+        }
+
+        .corner-decoration {
+            position: absolute;
+            width: 25px;
+            height: 25px;
+            border: 2px solid rgba(197, 168, 128, 0.25);
+            pointer-events: none;
+            transition: all 1.5s ease-in-out;
+            opacity: 0;
+        }
+        .main-content.visible .corner-decoration { opacity: 1; }
+        .top-left { top: 15px; left: 15px; border-right: none; border-bottom: none; }
+        .top-right { top: 15px; right: 15px; border-left: none; border-bottom: none; }
+        .bottom-left { bottom: 15px; left: 15px; border-right: none; border-top: none; }
+        .bottom-right { bottom: 15px; right: 15px; border-left: none; border-top: none; }
+
+        .carta-gabinete {
+            position: absolute;
+            width: 88%;
+            height: 88%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* TEXTO ULTRA TRANSPARENTE */
+        .texto-manuscrito {
+            font-size: 1.15rem;
+            line-height: 1.75;
+            text-align: justify;
+            font-style: italic;
+            font-weight: 600; 
+            color: #1c140e; 
+            background-color: rgba(238, 224, 196, 0.18); 
+            padding: 28px;
+            border-radius: 2px;
+            max-height: 95%;
+            overflow-y: auto; 
+            border: 1px solid rgba(28, 20, 14, 0.03);
+        }
+
+        .texto-manuscrito p {
+            margin-bottom: 18px;
+        }
+
+        .texto-manuscrito p:last-child {
+            margin-bottom: 0;
+        }
+
+        .texto-manuscrito::-webkit-scrollbar {
+            width: 4px;
+        }
+        .texto-manuscrito::-webkit-scrollbar-thumb {
+            background-color: rgba(28, 20, 14, 0.25);
+        }
+
+        /* ELEMENTOS DECORATIVOS LATERALES */
+        .side-card {
+            flex: 1;
+            background: linear-gradient(135deg, rgba(42, 31, 23, 0.4) 0%, rgba(26, 21, 18, 0.6) 100%);
+            border: 1px solid rgba(197, 168, 128, 0.15);
+            padding: 30px;
+            border-radius: 4px;
+            backdrop-filter: blur(8px);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 1.8s cubic-bezier(0.25, 1, 0.5, 1);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .stage-container.active .side-card {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .side-card-title {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.65rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: #c5a880;
+            border-bottom: 1px solid rgba(197, 168, 128, 0.2);
+            padding-bottom: 8px;
+        }
+
+        .side-card-text {
+            font-size: 1.2rem;
+            font-style: italic;
+            color: #d9c5b2;
+            line-height: 1.6;
+        }
+
+        /* CONTROLES DE MÚSICA */
+        .custom-audio-player {
+            position: fixed;
+            bottom: 25px;
+            right: 25px;
+            z-index: 100;
+            background: rgba(26, 21, 18, 0.9);
+            border: 1px solid rgba(197, 168, 128, 0.4);
+            padding: 10px 14px;
+            border-radius: 50px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            opacity: 0;
+            visibility: hidden;
+            backdrop-filter: blur(8px);
+            transition: opacity 0.5s, visibility 0.5s;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .custom-audio-player.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .audio-btn {
+            background: #c5a880;
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .audio-btn svg {
+            width: 12px;
+            height: 12px;
+            fill: #1a1512;
+        }
+
+        .audio-status {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #d9c5b2;
+        }
+
+        /* DISEÑO RESPONSIVE ADAPTATIVO */
+        @media (max-width: 1024px) {
+            .side-card { display: none; } 
+            body { padding: 30px 15px; }
+        }
+
+        @media (max-width: 600px) {
+            .poster-container { aspect-ratio: auto; height: 85vh; }
+            .texto-manuscrito { padding: 22px; font-size: 1.05rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- FONDO VIVO ANIMADO -->
+    <canvas id="particles-canvas"></canvas>
+    <div class="ambient-glow" id="ambientGlow"></div>
+
+    <!-- AUDIO CONECTADO A TU ARCHIVO LOCOS.MP3 -->
+    <audio id="bg-music" loop preload="auto">
+        <source src="locos.mp3" type="audio/mpeg">
+    </audio>
+
+    <div class="custom-audio-player" id="audioPlayer">
+        <button class="audio-btn" id="audioToggle">
+            <svg id="audioIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+        <span class="audio-status" id="audioStatus">Música</span>
+    </div>
+
+    <!-- PANTALLA DE APERTURA -->
+    <div class="intro-screen" id="introScreen">
+        <div class="envelope-wrapper" id="envelopeWrapper">
+            <div class="envelope" id="mainEnvelope">
+                <div class="envelope-seal"></div>
+            </div>
+            <div class="envelope-text">Toca para abrir la carta</div>
+        </div>
+    </div>
+
+    <!-- ESCENARIO PRINCIPAL -->
+    <div class="stage-container" id="stageContainer">
+        
+        <!-- Bloque Decorativo Izquierdo -->
+        <div class="side-card" style="transition-delay: 0.3s;">
+            <span class="side-card-title">Te amooo</span>
+            <p class="side-card-text">teamoteamoteamo</p>
+        </div>
+
+        <!-- El Póster Central -->
+        <div class="main-content" id="mainContent">
+            <div class="poster-container">
+                <div class="corner-decoration top-left"></div>
+                <div class="corner-decoration top-right"></div>
+                <div class="corner-decoration bottom-left"></div>
+                <div class="corner-decoration bottom-right"></div>
+
+                <main class="carta-gabinete">
+                    <article class="texto-manuscrito">
+                        <p>Hoy no festejamos nada, ni es un dia especial, ni nada parecido, bueno podriamos decir que festejamos un dia mas de novios.</p>
+                        
+                        <p>Pero el motivo principal de esto es pq quiero decirte lo mucho que te amo, lo mucho que me gustas, lo feliz que me haces y lo afortunado que soy de tener a una novia tan preciosa, tan única, es que creeme cuando te digo que eres una en un millón.</p>
+                        
+                        <p>Me gusta mucho estar contigo, cualquier cosa es bonita contigo, desde quemar cucarachas hasta cocernos en un baño de vapor. Y me hace muy feliz la idea de que estaremos siempre juntos, siempre digo que solo tendremos una vida, y voy a hacer todo para que mi única vida sea a tu lado. Te obligaría a estar conmigo siempre, toda la vida, pero mejor me pongo trucha para que también quieras.</p>
+                        
+                        <p>Recuerda que siempre pero siempre siempre voy a estar para ti, haría cualquier cosa por ti, qué no haría por ti? Te amo bonita.</p>
+                    </article>
+                </main>
+            </div>
+        </div>
+
+        <!-- Bloque Decorativo Derecho -->
+        <div class="side-card" style="transition-delay: 0.5s;">
+            <span class="side-card-title">Oyeee</span>
+            <p class="side-card-text">no vivo sin tu amor</p>
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const canvas = document.getElementById("particles-canvas");
+            const ctx = canvas.getContext("2d");
+            let particlesArray = [];
+            let explosionTriggered = false;
+
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            window.addEventListener("resize", resizeCanvas);
+            resizeCanvas();
+
+            class Particle {
+                constructor(isExplosion = false) {
+                    this.x = isExplosion ? canvas.width / 2 : Math.random() * canvas.width;
+                    this.y = isExplosion ? canvas.height / 2 : Math.random() * canvas.height;
+                    this.size = Math.random() * 3 + 1;
+                    
+                    if (isExplosion) {
+                        const angle = Math.random() * Math.PI * 2;
+                        const speed = Math.random() * 7 + 3;
+                        this.speedX = Math.cos(angle) * speed;
+                        this.speedY = Math.sin(angle) * speed;
+                    } else {
+                        this.speedX = Math.sin(Math.random() * 2) * 0.2;
+                        this.speedY = Math.random() * 0.6 + 0.2;
+                    }
+                    
+                    this.opacity = Math.random() * 0.5 + 0.2;
+                    this.color = Math.random() > 0.4 ? '#c5a880' : '#d9c5b2';
+                    this.isExplosion = isExplosion;
+                }
+
+                update() {
+                    this.x += this.speedX;
+                    this.y += this.speedY;
+
+                    if (this.isExplosion) {
+                        this.speedX *= 0.97;
+                        this.speedY *= 0.97;
+                        this.speedY += 0.03;
+                        if (this.y > canvas.height || this.x < 0 || this.x > canvas.width) {
+                            this.isExplosion = false;
+                            this.y = 0;
+                            this.x = Math.random() * canvas.width;
+                            this.speedY = Math.random() * 0.6 + 0.2;
+                            this.speedX = Math.sin(Math.random() * 2) * 0.2;
+                        }
+                    } else {
+                        if (this.y > canvas.height) {
+                            this.y = 0;
+                            this.x = Math.random() * canvas.width;
+                        }
+                    }
+                }
+
+                draw() {
+                    ctx.save();
+                    ctx.globalAlpha = this.opacity;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fillStyle = this.color;
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+
+            function initAmbientParticles() {
+                for (let i = 0; i < 50; i++) {
+                    particlesArray.push(new Particle(false));
+                }
+            }
+
+            function triggerMagicExplosion() {
+                for (let i = 0; i < 80; i++) {
+                    particlesArray.push(new Particle(true));
+                }
+            }
+
+            function animateParticles() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                particlesArray.forEach(p => {
+                    p.update();
+                    p.draw();
+                });
+                requestAnimationFrame(animateParticles);
+            }
+
+            initAmbientParticles();
+            animateParticles();
+
+            // CONTROL DEL SISTEMA
+            const introScreen = document.getElementById("introScreen");
+            const envelopeWrapper = document.getElementById("envelopeWrapper");
+            const mainEnvelope = document.getElementById("mainEnvelope");
+            const mainContent = document.getElementById("mainContent");
+            const stageContainer = document.getElementById("stageContainer");
+            const ambientGlow = document.getElementById("ambientGlow");
+            const bgMusic = document.getElementById("bg-music");
+            const audioPlayer = document.getElementById("audioPlayer");
+            const audioToggle = document.getElementById("audioToggle");
+            const audioStatus = document.getElementById("audioStatus");
+            const audioIcon = document.getElementById("audioIcon");
+
+            let isPlaying = false;
+
+            function toggleAudio() {
+                if (isPlaying) {
+                    bgMusic.pause();
+                    audioStatus.innerText = "Música";
+                    audioIcon.innerHTML = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+                } else {
+                    bgMusic.play().catch(() => {});
+                    audioStatus.innerText = "Pausa";
+                    audioIcon.innerHTML = '<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+                }
+                isPlaying = !isPlaying;
+            }
+
+            audioToggle.addEventListener("click", toggleAudio);
+
+            envelopeWrapper.addEventListener("click", () => {
+                mainEnvelope.classList.add("open");
+                
+                if (!explosionTriggered) {
+                    triggerMagicExplosion();
+                    explosionTriggered = true;
+                }
+
+                bgMusic.play().then(() => {
+                    isPlaying = true;
+                    audioStatus.innerText = "Pausa";
+                    audioIcon.innerHTML = '<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+                }).catch(() => {});
+
+                setTimeout(() => {
+                    introScreen.classList.add("fade-out");
+                    mainContent.classList.add("visible");
+                    stageContainer.classList.add("active");
+                    ambientGlow.classList.add("active");
+                    audioPlayer.classList.add("visible");
+                }, 900);
+            });
+        });
+    </script>
+</body>
+</html>
